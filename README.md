@@ -24,9 +24,17 @@ The HV column represnets the boolen (True/False) value of if the run is in a hig
 #### Example
 High_Voltage,Q_1,LED,mu_1,HV 
 
-1380,26,2.72,0.6,True 
+1380,26,2.72,0.6,True
 
-1400,28.0,2.82,0.70,False 
+1400,28,2.72,0.6,True
+
+1420,31,2.72,0.6,True
+
+1400,28.1,2.68,0.3,False
+
+1400,28.2,2.70,0.38,False
+
+1400,28.2,2.72,0.50,False
 
 ### High Voltage Sweep
 A high voltage sweep is performed by keeping the test setup at a constant LED value while increasing the High Voltage value in steady increments. 
