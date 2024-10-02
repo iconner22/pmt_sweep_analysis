@@ -12,7 +12,7 @@ This shows the stability of the PMT across light intensities. This stability is 
 ## Ideal Gain Entry
 This features allows the user to enter an ideal gain and it calculates the necessary voltage based on the fitted equation.
 
-### Data Entry
+## Data Entry
 The user interface takes the data in a very specific form. The data must be comma seperated and follow the format of:
 High_Voltage,Q_1,LED,mu_1,HV
 
