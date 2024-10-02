@@ -22,7 +22,7 @@ The LED column represents the value of the light source (LED) for that run.
 The mu_1 column represents mu_1 value from that run (the mean number of photoelectrons)
 The HV column represnets the boolen (True/False) value of if the run is in a high voltage sweep or not. 
 #### Example
-High_Voltage,Q_1,LED,mu_1,HV
+High_Voltage,Q_1,LED,mu_1,HV\n
 1380,26,2.72,0.6,True
 1400,28,2.72,0.6,True
 1420,31,2.72,0.6,True
