@@ -115,19 +115,31 @@ class App(ctk.CTk):
         popup.title("About Window")
         popup.configure(fg_color="#5D707F")
         # Add a label in the popup window
-        label = ctk.CTkLabel(popup, text=f"GUI used to analyze single LED and HV sweeps.\nFor use in PMT Calibration.\nAuthor:Ian Conner", anchor="w")
+        label = ctk.CTkLabel(popup, text=f"GUI used to analyze single LED and HV sweeps.\nFor use in PMT Calibration.\nAuthor:Ian Conner", anchor="w", justify = "left")
         label.pack(pady=20)
-
 
     def help_pop(self, *events):
         popup = ctk.CTkToplevel()  # Create a new Toplevel window
         popup.geometry("900x200")  # Set size of popup window
         popup.title("Help Window")
         popup.configure(fg_color="#5D707F")
+
+        # Help text
+        help_text = f"""
+        This GUI uses the data read in from the file chosen with the Open File Button.
+        The file should be comma-separated (.csv) and contain both High Voltage and LED Sweep Data, following this structure:
+        --------------------------------------------------------------------------------------------
+        High_Voltage,Q_1,LED,mu_1,HV (Header)
+        1380,26.2,2.72,0.60,True (High Voltage Sweep Entry)
+        1400,28.0,2.82,0.70,False (LED Sweep Entry)
+        --------------------------------------------------------------------------------------------
+        The boolean value determines if it is an HV Sweep (True) or LED Sweep (False).
+        High Voltage Sweeps occur at a stable LED value with HV increments.
+        LED Sweeps occur at a stable high voltage with LED increments.
+        """
+
         # Add a label in the popup window
-        label = ctk.CTkLabel(popup,
-                             text=f"This GUI uses the data read in from the file chosen with the Open File Button.\nThe file should be comma seperated and have both High Voltage and LED Sweep Data and follow the following structure:\nHigh_Voltage,Q_1,LED,mu_1,HV\n" +
-                                  f"1520,46,0.6,0.6,True\n1400,28,2.68,0.3,False\nThe boolean value determines if it is a HV Sweep (True) or LED Sweep (False).\nHigh Voltage Sweeps occur at a stable LED value and HV increments.\nLED Sweeps occur at a stable high voltage and LED increments.")
+        label = ctk.CTkLabel(popup, text=help_text, anchor='w', justify = 'left')
         label.pack(pady=20)
 
     def on_entry_click(self, event):
@@ -143,63 +155,80 @@ class App(ctk.CTk):
             self.ideal_voltage_label.configure(text = f"Ideal Voltage {ideal_voltage:.2f}")
 
     def open_file(self):
-
-        file_path = tk.filedialog.askopenfilename(title="Select a File", filetypes=[("All Files", "*.*"), ("Text Files", "*.txt")])
-        data_frame = pd.read_csv(file_path)
-        hv_sweep = data_frame[data_frame["HV"] == True]
-        led_sweep = data_frame[data_frame["HV"] == False]
-        self.hv_graph(hv_sweep)
-        self.led_graph(led_sweep)
+        try:
+            file_path = tk.filedialog.askopenfilename(title="Select a File", filetypes=[("All Files", "*.*"), ("Text Files", "*.txt")])
+            data_frame = pd.read_csv(file_path)
+            hv_sweep = data_frame[data_frame["HV"] == True]
+            led_sweep = data_frame[data_frame["HV"] == False]
+            self.hv_graph(hv_sweep)
+            self.led_graph(led_sweep)
+        except Exception as e:
+            self.error_popup(f"Issue Opening the File\nMake sure that you are opening a properly formatted file")
 
     def hv_graph(self, df):
         def poly_fit(x, a, b, c):
             return a*x**2 + b*x + c
+        try:
+            x_vals = df["High_Voltage"]
+            y_vals = df["Q_1"]
+            params, cov_matrix = curve_fit(f=poly_fit, xdata=x_vals, ydata=y_vals)
+            self.params = params
+            x_fit = np.linspace(x_vals.min(), x_vals.max(),100)
+            y_fit = poly_fit(x_fit, *params)
+            self.hv_fig.clear()
+            hv_fig_plot = self.hv_fig.gca()
+            hv_fig_plot.scatter(x_vals, y_vals, color = "#5D707F", label = "Experimental Data")
+            hv_fig_plot.plot(x_fit, y_fit, alpha=0.5, color="r", linewidth=5, label="Fitted Data")
+            hv_fig_plot.set_xlabel("High Voltage (V)")
+            hv_fig_plot.set_ylabel(r"Gain ($Q_1$)")
+            hv_fig_plot.legend(frameon = False)
+            self.hv_fig.tight_layout()
+            self.hv_canvas.draw()
 
-        x_vals = df["High_Voltage"]
-        y_vals = df["Q_1"]
-        params, cov_matrix = curve_fit(poly_fit, x_vals, y_vals)
-        self.params = params
-        x_fit = np.linspace(x_vals.min(), x_vals.max(),100)
-        y_fit = poly_fit(x_fit, *params)
-        self.hv_fig.clear()
-        hv_fig_plot = self.hv_fig.gca()
-        hv_fig_plot.scatter(x_vals, y_vals, color = "#5D707F", label = "Experimental Data")
-        hv_fig_plot.plot(x_fit, y_fit, alpha=0.5, color="r", linewidth=5, label="Fitted Data")
-        hv_fig_plot.set_xlabel("High Voltage (V)")
-        hv_fig_plot.set_ylabel("rGain ($Q_1$)")
-        hv_fig_plot.legend(frameon = False)
-        self.hv_fig.tight_layout()
-        self.hv_canvas.draw()
-
-        self.equation_label.configure(text = f"Q1 = {params[0]:.4g}*V^2+{params[1]:.4g}*V+{params[2]:.4g}")
+            self.equation_label.configure(text = f"Q1 = {params[0]:.4g}*V^2+{params[1]:.4g}*V+{params[2]:.4g}")
+        except:
+            self.error_popup("Error plotting HV data, make sure the file is properly formatted")
 
 
+    def error_popup(self, message):
+        popup = ctk.CTkToplevel()  # Create a new Toplevel window
+        popup.geometry("500x200")  # Set size of popup window
+        popup.title("Error")
+        popup.configure(fg_color="#5D707F")
 
+        # Help text
+        help_text = f"{message}"
+
+        # Add a label in the popup window
+        label = ctk.CTkLabel(popup, text=help_text,anchor='w', justify = 'left')
+        label.pack(pady=20)
     def led_graph(self, df):
-        x_vals = df["mu_1"]
-        y_vals = df["Q_1"]
-        avg = y_vals.mean()
-        ten_p = 0.1 * y_vals.mean()
-        five_p = 0.05 * y_vals.mean()
-        self.led_fig.clear()
-        led_fig_plot = self.led_fig.gca()
-        led_fig_plot.scatter(x_vals, y_vals,color = "#5D707F")
-        led_fig_plot.set_xlabel(r"$\mu$ photoelectrons")
-        led_fig_plot.set_ylabel(r"Gain ($Q_1$) - 5% Increments")
+        try:
+            x_vals = df["mu_1"]
+            y_vals = df["Q_1"]
+            avg = y_vals.mean()
+            ten_p = 0.1 * y_vals.mean()
+            five_p = 0.05 * y_vals.mean()
+            self.led_fig.clear()
+            led_fig_plot = self.led_fig.gca()
+            led_fig_plot.scatter(x_vals, y_vals,color = "#5D707F")
+            led_fig_plot.set_xlabel(r"$\mu$ photoelectrons")
+            led_fig_plot.set_ylabel(r"Gain ($Q_1$) - 5% Increments")
 
-        led_fig_plot.axhline(y = avg, linestyle = "--", color = 'r', alpha = 0.5)
-        led_fig_plot.axhline(y = avg + five_p, linestyle = "--", color = 'r', alpha = 0.5)
-        led_fig_plot.axhline(y = avg - five_p, linestyle = "--", color = 'r', alpha = 0.5)
-        led_fig_plot.axhline(y = avg + ten_p, linestyle = "--", color = 'r', alpha = 0.5)
-        led_fig_plot.axhline(y = avg - ten_p, linestyle = "--", color = 'r', alpha = 0.5)
+            led_fig_plot.axhline(y = avg, linestyle = "--", color = 'r', alpha = 0.5)
+            led_fig_plot.axhline(y = avg + five_p, linestyle = "--", color = 'r', alpha = 0.5)
+            led_fig_plot.axhline(y = avg - five_p, linestyle = "--", color = 'r', alpha = 0.5)
+            led_fig_plot.axhline(y = avg + ten_p, linestyle = "--", color = 'r', alpha = 0.5)
+            led_fig_plot.axhline(y = avg - ten_p, linestyle = "--", color = 'r', alpha = 0.5)
 
-        max_stability = (y_vals.max() - y_vals.mean())/y_vals.mean()
-        min_stability = (y_vals.min() - y_vals.mean())/y_vals.mean()
-        stability = max(abs(max_stability), abs(min_stability))
-        self.q1_stability_label.configure(text = f"All Q1 within {stability * 100:.2f} % of avg.")
-        self.led_fig.tight_layout()
-        self.led_canvas.draw()
-
+            max_stability = (y_vals.max() - y_vals.mean())/y_vals.mean()
+            min_stability = (y_vals.min() - y_vals.mean())/y_vals.mean()
+            stability = max(abs(max_stability), abs(min_stability))
+            self.q1_stability_label.configure(text = f"All Q1 within {stability * 100:.2f} % of avg.")
+            self.led_fig.tight_layout()
+            self.led_canvas.draw()
+        except Exception:
+            self.error_popup("Issue Plotting LED Graphs. Make sure the data is properly formatted")
 
 # Main entry point
 if __name__ == "__main__":
